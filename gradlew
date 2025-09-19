@@ -34,3 +34,4 @@ if [ -z "$GRADLE_HOME" ] ; then
 fi
 
 exec "${JAVACMD}" $GRADLE_OPTS -cp "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
+
