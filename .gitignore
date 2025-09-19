@@ -49,3 +49,5 @@ logs/*.log
 
 # Spring Boot DevTools
 .spring-boot-devtools.properties
+/.gradle
+logs/
