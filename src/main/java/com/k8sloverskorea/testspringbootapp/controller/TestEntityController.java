@@ -4,6 +4,9 @@ import com.k8sloverskorea.testspringbootapp.model.TestEntity;
 import com.k8sloverskorea.testspringbootapp.service.TestEntityService;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +19,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/entities")
+@Tag(name = "엔티티 API", description = "TestEntity CRUD 및 검색 API")
 public class TestEntityController {
     
     private static final Logger logger = LoggerFactory.getLogger(TestEntityController.class);
@@ -27,6 +31,7 @@ public class TestEntityController {
     private Tracer tracer;
     
     @GetMapping
+    @Operation(summary = "엔티티 전체 조회", description = "모든 TestEntity 목록을 반환합니다.")
     public ResponseEntity<List<TestEntity>> getAllEntities() {
         Span span = tracer.spanBuilder("get-all-entities-endpoint").startSpan();
         try {
@@ -39,7 +44,8 @@ public class TestEntityController {
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<TestEntity> getEntityById(@PathVariable Long id) {
+    @Operation(summary = "엔티티 단건 조회", description = "ID로 TestEntity를 조회합니다.")
+    public ResponseEntity<TestEntity> getEntityById(@Parameter(description = "조회할 엔티티의 ID") @PathVariable Long id) {
         Span span = tracer.spanBuilder("get-entity-by-id-endpoint").startSpan();
         try {
             logger.info("GET /api/entities/{} - Retrieving entity by id", id);
@@ -52,6 +58,7 @@ public class TestEntityController {
     }
     
     @PostMapping
+    @Operation(summary = "엔티티 생성", description = "요청 본문의 TestEntity로 새 엔티티를 생성합니다.")
     public ResponseEntity<TestEntity> createEntity(@RequestBody TestEntity entity) {
         Span span = tracer.spanBuilder("create-entity-endpoint").startSpan();
         try {
@@ -64,7 +71,8 @@ public class TestEntityController {
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<TestEntity> updateEntity(@PathVariable Long id, @RequestBody TestEntity entity) {
+    @Operation(summary = "엔티티 수정", description = "ID에 해당하는 엔티티를 요청 본문 값으로 업데이트합니다.")
+    public ResponseEntity<TestEntity> updateEntity(@Parameter(description = "수정할 엔티티의 ID") @PathVariable Long id, @RequestBody TestEntity entity) {
         Span span = tracer.spanBuilder("update-entity-endpoint").startSpan();
         try {
             logger.info("PUT /api/entities/{} - Updating entity", id);
@@ -78,7 +86,8 @@ public class TestEntityController {
     }
     
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteEntity(@PathVariable Long id) {
+    @Operation(summary = "엔티티 삭제", description = "ID에 해당하는 엔티티를 삭제합니다.")
+    public ResponseEntity<Void> deleteEntity(@Parameter(description = "삭제할 엔티티의 ID") @PathVariable Long id) {
         Span span = tracer.spanBuilder("delete-entity-endpoint").startSpan();
         try {
             logger.info("DELETE /api/entities/{} - Deleting entity", id);
@@ -92,7 +101,8 @@ public class TestEntityController {
     }
     
     @GetMapping("/search")
-    public ResponseEntity<List<TestEntity>> searchEntities(@RequestParam String name) {
+    @Operation(summary = "엔티티 검색", description = "이름에 지정한 키워드가 포함된 엔티티를 검색합니다.")
+    public ResponseEntity<List<TestEntity>> searchEntities(@Parameter(description = "이름 검색 키워드") @RequestParam String name) {
         Span span = tracer.spanBuilder("search-entities-endpoint").startSpan();
         try {
             logger.info("GET /api/entities/search?name={} - Searching entities", name);
