@@ -1,4 +1,123 @@
-# Test Spring Boot Application
+# test-spring-boot-app
+
+Application for various test scenarios with Kubernetes deployment via Flux OCI Repository.
+
+## Features
+
+- Spring Boot 3.2.0 with Java 21
+- Built-in monitoring with Actuator and Prometheus metrics
+- OpenTelemetry tracing support
+- H2 in-memory database for testing
+- OpenAPI/Swagger documentation
+- Graceful shutdown and health checks
+
+## Build and Deployment
+
+This project uses GitHub Actions to build OCI images and Kubernetes manifests, then pushes them to GitHub Container Registry (GHCR). The Kubernetes manifests are packaged as OCI artifacts and deployed using Flux.
+
+### Prerequisites
+
+1. **GitHub Repository Settings**:
+   - Enable GitHub Actions
+   - Ensure `GITHUB_TOKEN` has package write permissions
+
+2. **Kubernetes Cluster with Flux**:
+   - Flux v2 installed and configured
+
+### Automatic Deployment Flow
+
+1. **Code Push/Tag**: Push to `main` branch or create a version tag (e.g., `v1.0.0`)
+2. **GitHub Actions**: Automatically builds and pushes:
+   - Application OCI image: `ghcr.io/k8s-lovers-korea/test-spring-boot-app`
+   - Kubernetes manifests OCI artifact: `ghcr.io/k8s-lovers-korea/test-spring-boot-app-manifests`
+3. **Flux Deployment**: Flux monitors the OCI repository and automatically deploys updates
+
+### Manual Deployment
+
+#### 1. Setup Flux OCI Repository (One-time setup)
+
+```bash
+# Apply Flux configuration to your cluster
+kubectl apply -f flux/oci-repository.yaml
+kubectl apply -f flux/kustomization.yaml
+```
+
+#### 2. Local Development
+
+```bash
+# Run tests
+./gradlew test
+
+# Build application
+./gradlew bootJar
+
+# Run locally
+./gradlew bootRun
+
+# Build Docker image
+docker build -t test-spring-boot-app .
+
+# Run with Docker
+docker run -p 8080:8080 test-spring-boot-app
+```
+
+#### 3. Deploy to Kubernetes (without Flux)
+
+```bash
+# Apply Kubernetes manifests directly
+kubectl apply -k k8s/
+
+# Or using kubectl with specific image
+kubectl apply -f k8s/
+kubectl set image deployment/test-spring-boot-app test-spring-boot-app=ghcr.io/k8s-lovers-korea/test-spring-boot-app:latest
+```
+
+## API Endpoints
+
+- **Application**: `http://localhost:8080`
+- **Health Check**: `http://localhost:8080/actuator/health`
+- **Metrics**: `http://localhost:8080/actuator/prometheus`
+- **API Documentation**: `http://localhost:8080/swagger-ui.html`
+- **H2 Console** (dev only): `http://localhost:8080/h2-console`
+
+## Configuration
+
+The application uses different configurations for different environments:
+
+- **Development**: `src/main/resources/application.yml`
+- **Production**: Configuration in `k8s/configmap.yaml`
+
+Key differences in production:
+- H2 console disabled
+- Reduced log verbosity
+- Lower tracing sampling rate
+- Health endpoint security
+
+## Monitoring
+
+The application includes comprehensive monitoring:
+
+- **Health Checks**: Kubernetes readiness/liveness probes
+- **Metrics**: Prometheus metrics via `/actuator/prometheus`
+- **Tracing**: OpenTelemetry support (configure OTLP endpoint)
+- **Logging**: Structured logging with trace correlation
+
+## Flux OCI Repository Architecture
+
+This project demonstrates a GitOps approach using Flux OCI repositories:
+
+1. **Source Code** → GitHub Repository
+2. **CI/CD** → GitHub Actions builds and pushes:
+   - Application image to GHCR
+   - Kubernetes manifests as OCI artifact to GHCR
+3. **Deployment** → Flux monitors OCI repository and applies manifests to Kubernetes
+
+### Benefits:
+
+- **Immutable Deployments**: Manifests are versioned and immutable
+- **Reduced Git Pollution**: No manifest updates in source repository
+- **Enhanced Security**: Signed OCI artifacts (optional)
+- **Simplified GitOps**: Direct manifest deployment without Git repository polling
 
 A comprehensive Spring Boot application designed for various test scenarios including performance testing, thread management, monitoring, and observability.
 

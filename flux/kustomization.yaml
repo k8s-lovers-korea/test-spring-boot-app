@@ -1,0 +1,35 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: test-spring-boot-app
+  namespace: flux-system
+spec:
+  interval: 10m
+  sourceRef:
+    kind: OCIRepository
+    name: test-spring-boot-app-manifests
+  path: "./"
+  prune: true
+  wait: true
+  timeout: 5m
+  targetNamespace: default
+  healthChecks:
+  - apiVersion: apps/v1
+    kind: Deployment
+    name: test-spring-boot-app
+    namespace: default
+  postBuild:
+    substitute:
+      APP_VERSION: "latest"
+    substituteFrom:
+    - kind: ConfigMap
+      name: app-config
+      optional: true
+  patches:
+  - patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+      name: test-spring-boot-app

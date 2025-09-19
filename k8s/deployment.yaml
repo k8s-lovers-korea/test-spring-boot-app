@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-spring-boot-app
+  labels:
+    app: test-spring-boot-app
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: test-spring-boot-app
+  template:
+    metadata:
+      labels:
+        app: test-spring-boot-app
+        version: v1
+    spec:
+      containers:
+      - name: test-spring-boot-app
+        image: IMAGE_TAG_PLACEHOLDER
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "production"
+        - name: JAVA_OPTS
+          value: "-Xmx512m -Xms256m"
+        # Production-specific configurations
+        - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+          value: "health,info,prometheus,metrics"
+        - name: MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS
+          value: "when-authorized"
+        - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
+          value: "0.1"
+        - name: SPRING_H2_CONSOLE_ENABLED
+          value: "false"
+        - name: SPRING_JPA_SHOW_SQL
+          value: "false"
+        - name: LOGGING_LEVEL_COM_K8SLOVERSKOREA_TESTSPRINGBOOTAPP
+          value: "INFO"
+        - name: LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB
+          value: "INFO"
+        - name: LOGGING_LEVEL_ORG_HIBERNATE_SQL
+          value: "WARN"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+      terminationGracePeriodSeconds: 30
