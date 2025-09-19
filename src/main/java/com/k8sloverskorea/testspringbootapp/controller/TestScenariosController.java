@@ -40,6 +40,11 @@ public class TestScenariosController {
 
     @Value("${server.port:8080}")
     private int serverPort;
+
+    // Reusable HTTP client for internal fan-out calls
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
     
     // Thread lock for testing deadlock scenarios
     private final ReentrantLock testLock = new ReentrantLock();
@@ -75,8 +80,6 @@ public class TestScenariosController {
             if (!internal) {
                 int toSpawn = Math.max(0, maxServerThreads - 1);
                 try {
-                    HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
-                    List<CompletableFuture<HttpResponse<String>>> futures = new ArrayList<>();
                     for (int i = 0; i < toSpawn; i++) {
                         String url = "http://localhost:" + serverPort + "/api/test/block-thread?seconds=" + seconds + "&internal=true";
                         HttpRequest req = HttpRequest.newBuilder()
@@ -84,11 +87,11 @@ public class TestScenariosController {
                                 .timeout(Duration.ofSeconds(Math.max(5, seconds + 5)))
                                 .POST(HttpRequest.BodyPublishers.noBody())
                                 .build();
-                        futures.add(client.sendAsync(req, HttpResponse.BodyHandlers.ofString())
+                        httpClient.sendAsync(req, HttpResponse.BodyHandlers.ofString())
                                 .exceptionally(ex -> {
                                     logger.error("Internal fan-out request failed: {}", ex.toString());
                                     return null;
-                                }));
+                                });
                     }
                     logger.info("Spawned {} internal requests to exhaust thread pool (max={})", toSpawn, maxServerThreads);
                 } catch (Exception e) {
@@ -152,10 +155,15 @@ public class TestScenariosController {
             
             logger.info("Thread {} started hanging at {}", threadName, java.time.Instant.now());
             
-            while (System.currentTimeMillis() < endTime) {
+            while (true) {
+                long now = System.currentTimeMillis();
+                long remaining = endTime - now;
+                if (remaining <= 0) {
+                    break;
+                }
+                long sleepMs = Math.min(10000L, remaining);
                 try {
-                    // Log every 10 seconds to show the thread is still hanging
-                    Thread.sleep(10000);
+                    Thread.sleep(sleepMs);
                     long elapsed = (System.currentTimeMillis() - startTime) / 1000;
                     logger.debug("Thread {} has been hanging for {} seconds", threadName, elapsed);
                 } catch (InterruptedException e) {
@@ -211,15 +219,16 @@ public class TestScenariosController {
             long startTime = System.currentTimeMillis();
             long endTime = startTime + (seconds * 1000L);
             long counter = 0;
+            double resultAccumulator = 0.0d;
             
             // CPU intensive task
             while (System.currentTimeMillis() < endTime) {
-                // Perform some calculations to consume CPU
-                Math.sqrt(Math.random() * 1000000);
+                // Perform some calculations to consume CPU and use the result
+                resultAccumulator += Math.sqrt(Math.random() * 1_000_000);
                 counter++;
                 
                 // Log every million iterations
-                if (counter % 1000000 == 0) {
+                if (counter % 1_000_000 == 0) {
                     long elapsed = (System.currentTimeMillis() - startTime) / 1000;
                     logger.debug("CPU intensive task on thread {} - {} iterations, {} seconds elapsed", 
                                threadName, counter, elapsed);
@@ -235,6 +244,7 @@ public class TestScenariosController {
             response.put("thread", threadName);
             response.put("iterations", String.valueOf(counter));
             response.put("duration", totalTime + "s");
+            response.put("resultChecksum", Long.toString((long) resultAccumulator));
             
             return ResponseEntity.ok(response);
             

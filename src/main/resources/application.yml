@@ -52,14 +52,14 @@ management:
     metrics:
       export:
         enabled: true
-
-# OpenTelemetry configuration
-otel:
-  traces:
-    exporter: otlp
-  exporter:
-    otlp:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
       endpoint: http://localhost:4317
+
 
 # Springdoc configuration
 springdoc:
