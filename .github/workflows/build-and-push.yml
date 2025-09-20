@@ -74,7 +74,7 @@ jobs:
 
       - name: Push manifests as OCI artifact
         env:
-          DEST: ghcr.io/${{ github.repository }}-manifests:latest
+          DEST: ghcr.io/${{ github.repository }}:latest
         run: |
           oras push "$DEST" \
             --artifact-type application/vnd.cncf.flux.config.v1+tar+gzip \
