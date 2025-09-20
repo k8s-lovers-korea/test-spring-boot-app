@@ -77,6 +77,10 @@ logging:
     com.k8sloverskorea.testspringbootapp: DEBUG
     org.springframework.web: DEBUG
     org.hibernate.SQL: DEBUG
+    # Reduce logging for health check endpoints
+    org.springframework.boot.actuator.endpoint.web.servlet: WARN
+    org.springframework.boot.actuator.health: WARN
+    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: WARN
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
     file: "%d{HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
