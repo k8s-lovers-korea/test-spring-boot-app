@@ -12,12 +12,12 @@ spec:
   prune: true
   wait: true
   timeout: 5m
-  targetNamespace: default
+  targetNamespace: sample-apps
   healthChecks:
   - apiVersion: apps/v1
     kind: Deployment
     name: test-spring-boot-app
-    namespace: default
+    namespace: sample-apps
   postBuild:
     substitute:
       APP_VERSION: "latest"

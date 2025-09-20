@@ -1,4 +1,4 @@
-apiVersion: source.toolkit.fluxcd.io/v1beta2
+apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
   name: test-spring-boot-app-manifests
@@ -7,4 +7,7 @@ spec:
   interval: 5m
   url: oci://ghcr.io/k8s-lovers-korea/test-spring-boot-app-manifests
   ref:
-    tag: latest  # This will be updated by the CI/CD pipeline
+    tag: main  # Matches the tag created by GitHub Actions for main branch
+  # Uncomment below if package is private:
+  # secretRef:
+  #   name: ghcr-credentials
