@@ -45,6 +45,12 @@ spec:
           value: "INFO"
         - name: LOGGING_LEVEL_ORG_HIBERNATE_SQL
           value: "WARN"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector.observability.svc.cluster.local:4317
+        - name: MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED
+          value: "true"
+        - name: MANAGEMENT_OTEL_METRICS_EXPORT_URL
+          value: http://otel-collector.observability.svc.cluster.local:4318/v1/metrics
         resources:
           requests:
             memory: "256Mi"

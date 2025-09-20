@@ -62,8 +62,6 @@ management:
         enabled: true
         url: http://otel-collector.observability.svc.cluster.local:4318/v1/metrics
         step: 10s
-    tracing:
-      endpoint: http://otel-collector.observability.svc.cluster.local:4317
   opentelemetry:
     resource-attributes:
       service.name: ${spring.application.name}
@@ -84,3 +82,9 @@ logging:
     file: "%d{HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
   file:
     name: logs/test-spring-boot-app.log
+
+# OpenTelemetry exporter (used by custom OpenTelemetryConfig)
+otel:
+  exporter:
+    otlp:
+      endpoint: http://otel-collector.observability.svc.cluster.local:4317
