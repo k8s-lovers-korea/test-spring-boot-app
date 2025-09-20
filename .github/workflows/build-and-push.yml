@@ -1,139 +1,85 @@
-name: Build and Push OCI Image with Kubernetes Manifests
+name: Build and Push to GHCR
 
 on:
   push:
-    branches: [ "main", "master" ]
-    tags: [ "v*" ]
-  pull_request:
-    branches: [ "main", "master" ]
+    branches: [ main ]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      image-tags: ${{ steps.meta.outputs.tags }}
-      image-digest: ${{ steps.build.outputs.digest }}
       
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 21
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-    - name: Setup Gradle
-      uses: gradle/gradle-build-action@v2
-      with:
-        cache-disabled: false
-        cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Validate Gradle wrapper
-      uses: gradle/wrapper-validation-action@v1
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Make gradlew executable
-      run: chmod +x gradlew
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          labels: |
+            org.opencontainers.image.documentation=https://github.com/${{ github.repository }}/blob/main/README.md
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
 
-    - name: Build application
-      run: ./gradlew bootJar --no-daemon --stacktrace
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-    - name: Log in to Container Registry
-      if: github.event_name != 'pull_request'
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Render manifests with digest
+        run: |
+          mkdir -p dist/manifests
+          cp -r k8s dist/manifests/
+          # Substitute image to pinned digest form
+          sed -i "s#ghcr.io/k8s-lovers-korea/test-spring-boot-app:latest#ghcr.io/k8s-lovers-korea/test-spring-boot-app@${{ steps.build.outputs.digest }}#g" dist/manifests/k8s/deployment.yaml
+          # Pack as tar.gz for Flux OCI
+          tar -czf dist/app.tgz -C dist/manifests .
 
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=sha,prefix={{branch}}-
-          type=ref,event=branch
-          type=ref,event=pr  
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+      - name: Install oras
+        run: |
+          curl -sL https://github.com/oras-project/oras/releases/download/v1.2.0/oras_1.2.0_linux_amd64.tar.gz | sudo tar -C /usr/local/bin -xz oras
 
-    - name: Build and push Docker image
-      id: build
-      if: github.event_name != 'pull_request'
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
+      - name: Login GHCR for oras
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | oras login ghcr.io -u ${{ github.actor }} --password-stdin
 
-  build-and-push-manifests:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-    permissions:
-      contents: read
-      packages: write
+      - name: Push manifests as OCI artifact
+        env:
+          DEST: ghcr.io/${{ github.repository }}-manifests:latest
+        run: |
+          oras push "$DEST" \
+            --artifact-type application/vnd.cncf.flux.config.v1+tar+gzip \
+            --annotation "org.opencontainers.image.title=test-spring-boot-app-manifests" \
+            --annotation "org.opencontainers.image.description=Kubernetes manifests for test-spring-boot-app (Deployment/Service)" \
+            --annotation "org.opencontainers.image.source=https://github.com/${{ github.repository }}" \
+            dist/app.tgz:application/vnd.cncf.flux.config.v1+tar+gzip
 
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Log in to Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Extract metadata for manifests
-      id: meta-manifests
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-manifests
-        tags: |
-          type=ref,event=branch
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-          type=sha,prefix=sha-
-
-    - name: Update image tag in Kubernetes manifests
-      run: |
-        # Use the exact same image tag that was built in the previous job
-        # Extract the first tag from the multi-line tags output
-        IMAGE_TAG=$(echo '${{ needs.build-and-push.outputs.image-tags }}' | head -n1)
-        echo "Using image tag: ${IMAGE_TAG}"
-        
-        # Update the deployment manifest with the correct image tag
-        sed -i "s|IMAGE_TAG_PLACEHOLDER|${IMAGE_TAG}|g" k8s/deployment.yaml
-
-    - name: Create OCI artifact with Kubernetes manifests
-      run: |
-        # Install ORAS CLI
-        curl -LO https://github.com/oras-project/oras/releases/download/v1.1.0/oras_1.1.0_linux_amd64.tar.gz
-        tar -xzf oras_1.1.0_linux_amd64.tar.gz
-        chmod +x oras
-        
-        # Use consistent tagging strategy for manifests
-        # Extract base tag from the built image tag and apply to manifests
-        BASE_IMAGE_TAG=$(echo '${{ needs.build-and-push.outputs.image-tags }}' | head -n1)
-        MANIFEST_TAG=$(echo "${BASE_IMAGE_TAG}" | sed 's|${{ env.IMAGE_NAME }}|${{ env.IMAGE_NAME }}-manifests|')
-        
-        echo "Manifest image tag: ${MANIFEST_TAG}"
-        
-        # Push Kubernetes manifests as OCI artifact
-        ./oras push "${MANIFEST_TAG}" \
-          k8s/:application/vnd.k8s.yaml \
-          --annotation "org.opencontainers.image.title=Kubernetes Manifests for ${{ github.repository }}" \
-          --annotation "org.opencontainers.image.description=Kubernetes deployment manifests"

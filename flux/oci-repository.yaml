@@ -1,13 +1,15 @@
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
-  name: test-spring-boot-app-manifests
+  name: test-spring-boot-app
   namespace: flux-system
 spec:
   interval: 5m
-  url: oci://ghcr.io/k8s-lovers-korea/test-spring-boot-app-manifests
+  url: oci://ghcr.io/k8s-lovers-korea/test-spring-boot-app
   ref:
-    tag: main  # Matches the tag created by GitHub Actions for main branch
+    tag: latest  # Matches the tag created by GitHub Actions for main branch
   # Uncomment below if package is private:
   # secretRef:
   #   name: ghcr-credentials
+  layerSelector:
+    mediaType: "application/vnd.cncf.flux.config.v1+tar+gzip"

@@ -7,7 +7,7 @@ spec:
   interval: 10m
   sourceRef:
     kind: OCIRepository
-    name: test-spring-boot-app-manifests
+    name: test-spring-boot-app
   path: "./"
   prune: true
   wait: true
@@ -21,11 +21,3 @@ spec:
   postBuild:
     substitute:
       APP_VERSION: "latest"
-  patches:
-  - patch: |
-      - op: replace
-        path: /spec/replicas
-        value: 2
-    target:
-      kind: Deployment
-      name: test-spring-boot-app
