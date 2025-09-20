@@ -57,8 +57,16 @@ management:
     sampling:
       probability: 1.0
   otlp:
+    metrics:
+      export:
+        enabled: true
+        url: http://otel-collector.observability.svc.cluster.local:4318/v1/metrics
+        step: 10s
     tracing:
-      endpoint: http://localhost:4317
+      endpoint: http://otel-collector.observability.svc.cluster.local:4317
+  opentelemetry:
+    resource-attributes:
+      service.name: ${spring.application.name}
 
 
 # Springdoc configuration
