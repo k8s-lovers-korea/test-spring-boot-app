@@ -14,10 +14,11 @@ images:
 - name: IMAGE_TAG_PLACEHOLDER
   newTag: latest
 
-commonLabels:
-  app.kubernetes.io/name: test-spring-boot-app
-  app.kubernetes.io/component: backend
-  app.kubernetes.io/part-of: test-spring-boot-app
+labels:
+- pairs:
+    app.kubernetes.io/name: test-spring-boot-app
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: test-spring-boot-app
 
 # Add common annotations
 commonAnnotations:
@@ -25,7 +26,7 @@ commonAnnotations:
   app.kubernetes.io/managed-by: "flux"
 
 # Patches for environment-specific configurations
-patchesStrategicMerge: []
+patches: []
 
 # ConfigMap generator for additional configs
 configMapGenerator: []
