@@ -3,6 +3,7 @@ package com.k8sloverskorea.testspringbootapp.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -19,8 +20,14 @@ public class LoggingService {
     @Autowired
     private TestEntityService entityService;
     
+    @Value("${app.logging.scheduled.enabled:true}")
+    private boolean scheduledLoggingEnabled;
+    
     @Scheduled(fixedRate = 30000) // Every 30 seconds
     public void heartbeatLog() {
+        if (!scheduledLoggingEnabled) {
+            return;
+        }
         long count = counter.incrementAndGet();
         logger.info("Application heartbeat #{} - timestamp: {} - active threads: {}", 
                    count, Instant.now(), Thread.activeCount());
@@ -28,6 +35,9 @@ public class LoggingService {
     
     @Scheduled(fixedRate = 60000) // Every minute
     public void systemStatusLog() {
+        if (!scheduledLoggingEnabled) {
+            return;
+        }
         Runtime runtime = Runtime.getRuntime();
         long totalMemory = runtime.totalMemory();
         long freeMemory = runtime.freeMemory();
@@ -44,6 +54,9 @@ public class LoggingService {
     
     @Scheduled(fixedRate = 120000) // Every 2 minutes
     public void databaseStatusLog() {
+        if (!scheduledLoggingEnabled) {
+            return;
+        }
         try {
             int entityCount = entityService.getAllEntities().size();
             logger.info("Database Status - Total entities in memory: {}", entityCount);
@@ -54,6 +67,9 @@ public class LoggingService {
     
     @Scheduled(fixedRate = 300000) // Every 5 minutes
     public void detailedSystemLog() {
+        if (!scheduledLoggingEnabled) {
+            return;
+        }
         logger.info("=== Detailed System Status ===");
         logger.info("Application: test-spring-boot-app");
         logger.info("Uptime: {} ms", java.lang.management.ManagementFactory.getRuntimeMXBean().getUptime());

@@ -51,6 +51,8 @@ spec:
           value: "true"
         - name: MANAGEMENT_OTEL_METRICS_EXPORT_URL
           value: http://otel-collector.observability.svc.cluster.local:4318/v1/metrics
+        - name: APP_LOGGING_SCHEDULED_ENABLED
+          value: "false"
         resources:
           requests:
             memory: "256Mi"

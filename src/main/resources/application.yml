@@ -92,3 +92,21 @@ otel:
   exporter:
     otlp:
       endpoint: http://otel-collector.observability.svc.cluster.local:4317
+
+# Application specific settings
+app:
+  logging:
+    scheduled:
+      enabled: true  # Set to false in production to disable scheduled logging
+
+---
+# Production profile configuration
+spring:
+  config:
+    activate:
+      on-profile: production
+
+app:
+  logging:
+    scheduled:
+      enabled: false  # Disable scheduled logging in production
