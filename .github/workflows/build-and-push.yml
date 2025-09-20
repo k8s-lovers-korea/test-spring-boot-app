@@ -30,6 +30,9 @@ jobs:
 
     - name: Setup Gradle
       uses: gradle/gradle-build-action@v2
+      with:
+        cache-disabled: false
+        cache-read-only: ${{ github.event_name == 'pull_request' }}
 
     - name: Validate Gradle wrapper
       uses: gradle/wrapper-validation-action@v1
@@ -37,18 +40,11 @@ jobs:
     - name: Make gradlew executable
       run: chmod +x gradlew
 
-    - name: Download Gradle wrapper jar if missing
-      run: |
-        if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-          echo "Gradle wrapper jar is missing, downloading..."
-          curl -L -o gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v8.4.0/gradle/wrapper/gradle-wrapper.jar
-        fi
-
     - name: Run tests
-      run: ./gradlew test
+      run: ./gradlew test --no-daemon --stacktrace
 
     - name: Build application
-      run: ./gradlew bootJar
+      run: ./gradlew bootJar --no-daemon --stacktrace
 
     - name: Log in to Container Registry
       if: github.event_name != 'pull_request'
@@ -128,8 +124,18 @@ jobs:
         tar -xzf oras_1.1.0_linux_amd64.tar.gz
         chmod +x oras
         
+        # Determine tag to use
+        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          TAG=${GITHUB_REF#refs/tags/}
+        else
+          TAG="main"
+        fi
+        
+        # Construct the full image name
+        MANIFEST_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-manifests:${TAG}"
+        
         # Push Kubernetes manifests as OCI artifact
-        ./oras push ${{ steps.meta-manifests.outputs.tags }} \
+        ./oras push "${MANIFEST_IMAGE}" \
           k8s/:application/vnd.k8s.yaml \
           --annotation "org.opencontainers.image.title=Kubernetes Manifests for ${{ github.repository }}" \
           --annotation "org.opencontainers.image.description=Kubernetes deployment manifests"

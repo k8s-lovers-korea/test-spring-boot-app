@@ -21,10 +21,6 @@ spec:
   postBuild:
     substitute:
       APP_VERSION: "latest"
-    substituteFrom:
-    - kind: ConfigMap
-      name: app-config
-      optional: true
   patches:
   - patch: |
       - op: replace
